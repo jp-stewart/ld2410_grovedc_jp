@@ -51,8 +51,6 @@
 
 #include <ld2410.h>
 
-#define LD2410_DEBUG_COMMANDS 1
-
 ld2410 radar;
 bool engineeringMode = false;
 String command;
@@ -61,7 +59,7 @@ void setup(void)
 {
   MONITOR_SERIAL.begin(115200); //Feedback over Serial Monitor
   delay(500); //Give a while for Serial Monitor to wake up
-  radar.debug(Serial); //Uncomment to show debug information from the library on the Serial Monitor. By default this does not show sensor reads as they are very frequent.
+  //radar.debug(Serial); //Uncomment to show debug information from the library on the Serial Monitor. By default this does not show sensor reads as they are very frequent.
   #if defined(ESP32)
     RADAR_SERIAL.begin(256000, SERIAL_8N1, RADAR_RX_PIN, RADAR_TX_PIN); //UART for monitoring the radar
   #elif defined(__AVR_ATmega32U4__)
@@ -148,6 +146,7 @@ void loop()
           MONITOR_SERIAL.println(radar.max_stationary_gate);
           MONITOR_SERIAL.print(F("Idle time for targets: "));
           MONITOR_SERIAL.println(radar.sensor_idle_time);
+          MONITOR_SERIAL.println(F("Gate sensitivity"));
           for(uint8_t gate = 0; gate <= radar.max_gate; gate++)
           {
             MONITOR_SERIAL.print(F("Gate "));
