@@ -16,7 +16,7 @@
 
 #define LD2410_MAX_FRAME_LENGTH 40
 //#define LD2410_DEBUG_DATA
-//#define LD2410_DEBUG_COMMANDS
+#define LD2410_DEBUG_COMMANDS
 //#define LD2410_DEBUG_PARSE
 
 class ld2410	{
@@ -46,9 +46,9 @@ class ld2410	{
 		uint16_t sensor_idle_time = 0;
 		uint8_t motion_sensitivity[9] = {0,0,0,0,0,0,0,0,0};
 		uint8_t stationary_sensitivity[9] = {0,0,0,0,0,0,0,0,0};
-        bool requestResolution();
-        uint8_t resolution = 0;
-        bool setResolution(uint8_t res);
+	        bool requestResolution();
+        	uint8_t resolution = 0;
+	        bool setResolution(uint8_t res);
 		bool requestRestart();
 		bool requestFactoryReset();
 		bool requestStartEngineeringMode();
