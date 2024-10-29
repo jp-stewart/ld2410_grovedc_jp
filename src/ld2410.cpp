@@ -155,6 +155,11 @@ uint8_t ld2410::movingTargetEnergy()
 	//return 0;
 }
 
+uint16_t ld2410::detectionDistance()
+{
+	return detection_distance_;
+}
+
 bool ld2410::read_frame_()
 {
 	if(radar_uart_ -> available())
@@ -291,7 +296,10 @@ bool ld2410::read_frame_()
 				#if defined(LD2410_DEBUG_DATA) || defined(LD2410_DEBUG_COMMANDS)
 				if(debug_uart_ != nullptr)
 				{
-					debug_uart_->print(F("\nLD2410 frame overran"));
+					debug_uart_->print(F("\nLD2410 frame overran: "));
+					debug_uart_->print(radar_data_frame_position_);
+					debug_uart_->print(F(" Len: "));
+					debug_uart_->print(radar_data_frame_[4]);
 				}
 				#endif
 				frame_started_ = false;
@@ -346,6 +354,28 @@ bool ld2410::parse_data_frame_()
 		if(radar_data_frame_[6] == 0x01 && radar_data_frame_[7] == 0xAA)	//Engineering mode data
 		{
 			target_type_ = radar_data_frame_[8];
+			
+			moving_target_distance_ = radar_data_frame_[9] + (radar_data_frame_[10] << 8);
+			moving_target_energy_ = radar_data_frame_[11];
+
+			stationary_target_distance_ = radar_data_frame_[12] + (radar_data_frame_[13] << 8);
+			stationary_target_energy_ = radar_data_frame_[14];
+
+			detection_distance_ = radar_data_frame_[15] + (radar_data_frame_[16] << 8);
+
+			if (intra_frame_data_length_ > 30)
+			{
+				//Read out movement and stationary arrays
+				int gates = 9;
+				int movement_offset = 19;
+				int stationary_offset = 28;
+
+				for(int i = 0; i < gates; i++) {
+					eng_mode_motion[i] = radar_data_frame_[movement_offset + i];
+					eng_mode_stationary[i] = radar_data_frame_[stationary_offset + i];
+				}
+			}
+
 			#ifdef LD2410_DEBUG_PARSE
 			if(debug_uart_ != nullptr)
 			{
@@ -366,13 +396,44 @@ bool ld2410::parse_data_frame_()
 				{
 					debug_uart_->print(F("moving & stationary targets:"));
 				}
+				if(target_type_ & 0x01)
+				{
+					debug_uart_->print(F(" moving at "));
+					debug_uart_->print(moving_target_distance_);
+					debug_uart_->print(F("cm power "));
+					debug_uart_->print(moving_target_energy_);
+				}
+				if(target_type_ & 0x02)
+				{
+					debug_uart_->print(F(" stationary at "));
+					debug_uart_->print(stationary_target_distance_);
+					debug_uart_->print(F("cm power "));
+					debug_uart_->print(stationary_target_energy_);
+				}
+				debug_uart_->print(F(" distance at: "));
+				debug_uart_->print(detection_distance_);
+				debug_uart_->println();
+
+				if (intra_frame_data_length_ > 30)
+				{
+					int gates = 9;
+
+					debug_uart_->print(F("Eng Data: 0   1   2   3   4   5   6   7   8                 0   1   2   3   4   5   6   7   8\nMovement:["));
+
+					for(int i = 0; i < gates; i++) {
+						debug_uart_->printf("%03u ",eng_mode_motion[i]);
+					}					
+					debug_uart_->print(F("] Stationary:["));
+					for(int i = 0; i < gates; i++) {
+						debug_uart_->printf("%03u ",eng_mode_stationary[i]);
+					}
+					debug_uart_->print(F("]\n"));
+
+				}
 			}
 			#endif
-			/*
-			 *
-			 *	To-do support engineering mode
-			 *
-			 */
+			radar_uart_last_packet_ = millis();
+			return true;
 		}
 		else if(intra_frame_data_length_ == 13 && radar_data_frame_[6] == 0x02 && radar_data_frame_[7] == 0xAA && radar_data_frame_[17] == 0x55 && radar_data_frame_[18] == 0x00)	//Normal target data
 		{
@@ -524,6 +585,62 @@ bool ld2410::parse_command_frame_()
 		if(debug_uart_ != nullptr)
 		{
 			debug_uart_->print(F("\nACK for setting max values: "));
+		}
+		#endif
+		if(latest_command_success_)
+		{
+			radar_uart_last_packet_ = millis();
+			#ifdef LD2410_DEBUG_COMMANDS
+			if(debug_uart_ != nullptr)
+			{
+				debug_uart_->print(F("OK"));
+			}
+			#endif
+			return true;
+		}
+		else
+		{
+			if(debug_uart_ != nullptr)
+			{
+				debug_uart_->print(F("failed"));
+			}
+			return false;
+		}
+	}
+	else if(intra_frame_data_length_ == 4 && latest_ack_ == 0x62)
+	{
+		#ifdef LD2410_DEBUG_COMMANDS
+		if(debug_uart_ != nullptr)
+		{
+			debug_uart_->print(F("\nACK for engineering mode: "));
+		}
+		#endif
+		if(latest_command_success_)
+		{
+			radar_uart_last_packet_ = millis();
+			#ifdef LD2410_DEBUG_COMMANDS
+			if(debug_uart_ != nullptr)
+			{
+				debug_uart_->print(F("OK"));
+			}
+			#endif
+			return true;
+		}
+		else
+		{
+			if(debug_uart_ != nullptr)
+			{
+				debug_uart_->print(F("failed"));
+			}
+			return false;
+		}
+	}
+	else if(intra_frame_data_length_ == 4 && latest_ack_ == 0x63)
+	{
+		#ifdef LD2410_DEBUG_COMMANDS
+		if(debug_uart_ != nullptr)
+		{
+			debug_uart_->print(F("\nACK for end engineering mode: "));
 		}
 		#endif
 		if(latest_command_success_)
@@ -958,48 +1075,71 @@ bool ld2410::leave_configuration_mode_()
 
 bool ld2410::requestStartEngineeringMode()
 {
-	send_command_preamble_();
-	//Request firmware
-	radar_uart_->write((byte) 0x02);	//Command is two bytes long
-	radar_uart_->write((byte) 0x00);
-	radar_uart_->write((byte) 0x62);	//Request enter command mode
-	radar_uart_->write((byte) 0x00);
-	send_command_postamble_();
-	radar_uart_last_command_ = millis();
-	while(millis() - radar_uart_last_command_ < radar_uart_command_timeout_)
+	if(enter_configuration_mode_())
 	{
-		if(read_frame_())
+		delay(50);
+		send_command_preamble_();
+		//Request firmware
+		radar_uart_->write((byte) 0x02);	//Command is two bytes long
+		radar_uart_->write((byte) 0x00);
+		radar_uart_->write((byte) 0x62);	//Request enter command mode
+		radar_uart_->write((byte) 0x00);
+		send_command_postamble_();
+		radar_uart_last_command_ = millis();
+		while(millis() - radar_uart_last_command_ < radar_uart_command_timeout_)
 		{
-			if(latest_ack_ == 0x62 && latest_command_success_)
+			if(read_frame_())
 			{
-				return true;
+				if(latest_ack_ == 0x62 && latest_command_success_)
+				{
+					delay(50);
+					leave_configuration_mode_();
+					is_Engineering_mode_ = true;
+					return true;
+				}
 			}
 		}
 	}
+	delay(50);
+	leave_configuration_mode_();
 	return false;
 }
 
 bool ld2410::requestEndEngineeringMode()
 {
-	send_command_preamble_();
-	//Request firmware
-	radar_uart_->write((byte) 0x02);	//Command is two bytes long
-	radar_uart_->write((byte) 0x00);
-	radar_uart_->write((byte) 0x63);	//Request leave command mode
-	radar_uart_->write((byte) 0x00);
-	send_command_postamble_();
-	radar_uart_last_command_ = millis();
-	while(millis() - radar_uart_last_command_ < radar_uart_command_timeout_)
+	if(enter_configuration_mode_())
 	{
-		if(read_frame_())
+		delay(50);
+		send_command_preamble_();
+		//Request firmware
+		radar_uart_->write((byte) 0x02);	//Command is two bytes long
+		radar_uart_->write((byte) 0x00);
+		radar_uart_->write((byte) 0x63);	//Request leave command mode
+		radar_uart_->write((byte) 0x00);
+		send_command_postamble_();
+		radar_uart_last_command_ = millis();
+		while(millis() - radar_uart_last_command_ < radar_uart_command_timeout_)
 		{
-			if(latest_ack_ == 0x63 && latest_command_success_)
+			if(read_frame_())
 			{
-				return true;
+				if(latest_ack_ == 0x63 && latest_command_success_)
+				{
+					delay(50);
+					leave_configuration_mode_();
+					is_Engineering_mode_ = false;
+					return true;
+				}
 			}
 		}
 	}
+	delay(50);
+	leave_configuration_mode_();
 	return false;
+}
+
+bool ld2410::isEngineeringMode()
+{
+	return is_Engineering_mode_;
 }
 
 bool ld2410::requestCurrentConfiguration()
