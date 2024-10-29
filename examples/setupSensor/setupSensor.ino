@@ -33,6 +33,11 @@
       #define RADAR_SERIAL Serial1
       #define RADAR_RX_PIN 4
       #define RADAR_TX_PIN 5
+    #elif CONFIG_IDF_TARGET_ESP32C6
+      #define MONITOR_SERIAL Serial
+      #define RADAR_SERIAL Serial1
+      #define RADAR_RX_PIN 17
+      #define RADAR_TX_PIN 16
     #else 
       #error Target CONFIG_IDF_TARGET is not supported
     #endif
