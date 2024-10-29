@@ -14,7 +14,7 @@
 #define ld2410_h
 #include <Arduino.h>
 
-#define LD2410_MAX_FRAME_LENGTH 40
+#define LD2410_MAX_FRAME_LENGTH 46
 //#define LD2410_DEBUG_DATA
 #define LD2410_DEBUG_COMMANDS
 //#define LD2410_DEBUG_PARSE
@@ -35,6 +35,7 @@ class ld2410	{
 		bool movingTargetDetected();
 		uint16_t movingTargetDistance();
 		uint8_t movingTargetEnergy();
+		uint16_t detectionDistance();
 		bool requestFirmwareVersion();									//Request the firmware version
 		uint8_t firmware_major_version = 0;								//Reported major version
 		uint8_t firmware_minor_version = 0;								//Reported minor version
@@ -46,6 +47,8 @@ class ld2410	{
 		uint16_t sensor_idle_time = 0;
 		uint8_t motion_sensitivity[9] = {0,0,0,0,0,0,0,0,0};
 		uint8_t stationary_sensitivity[9] = {0,0,0,0,0,0,0,0,0};
+		uint8_t eng_mode_motion[9] = {0,0,0,0,0,0,0,0,0};
+		uint8_t eng_mode_stationary[9] = {0,0,0,0,0,0,0,0,0};
 	        bool requestResolution();
         	uint8_t resolution = 0;
 	        bool setResolution(uint8_t res);
@@ -53,6 +56,7 @@ class ld2410	{
 		bool requestFactoryReset();
 		bool requestStartEngineeringMode();
 		bool requestEndEngineeringMode();
+		bool isEngineeringMode();
 		bool setMaxValues(uint16_t moving, uint16_t stationary, uint16_t inactivityTimer);	//Realistically gate values are 0-8 but sent as uint16_t
 		bool setGateSensitivityThreshold(uint8_t gate, uint8_t moving, uint8_t stationary);
 		bool enableBluetooth();                                         //Enable or Disable Bluetooth
@@ -75,10 +79,12 @@ class ld2410	{
 		bool ack_frame_ = false;										//Whether the incoming frame is LIKELY an ACK frame
 		bool waiting_for_ack_ = false;									//Whether a command has just been sent
 		uint8_t target_type_ = 0;
+		bool is_Engineering_mode_ = false;
 		uint16_t moving_target_distance_ = 0;
 		uint8_t moving_target_energy_ = 0;
 		uint16_t stationary_target_distance_ = 0;
 		uint8_t stationary_target_energy_ = 0;
+		uint16_t detection_distance_ = 0;
 		
 		bool read_frame_();												//Try to read a frame from the UART
 		bool parse_data_frame_();										//Is the current data frame valid?
