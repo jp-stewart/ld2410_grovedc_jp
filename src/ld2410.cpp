@@ -1025,7 +1025,7 @@ void ld2410::send_command_postamble_()
 	radar_uart_->write((byte)0x01);
 }
 
-bool ld2410::enter_configuration_mode_()
+bool ld2410::enter_configuration_mode_(bool wait)
 {
 	send_command_preamble_();
 	//Request firmware
@@ -1036,6 +1036,12 @@ bool ld2410::enter_configuration_mode_()
 	radar_uart_->write((byte) 0x01);
 	radar_uart_->write((byte) 0x00);
 	send_command_postamble_();
+
+	if (!wait) {
+		delay(50);
+		return true;
+	}
+
 	radar_uart_last_command_ = millis();
 	while(millis() - radar_uart_last_command_ < radar_uart_command_timeout_)
 	{
@@ -1050,7 +1056,7 @@ bool ld2410::enter_configuration_mode_()
 	return false;
 }
 
-bool ld2410::leave_configuration_mode_()
+bool ld2410::leave_configuration_mode_(bool wait)
 {
 	send_command_preamble_();
 	//Request firmware
@@ -1059,6 +1065,12 @@ bool ld2410::leave_configuration_mode_()
 	radar_uart_->write((byte) 0xFE);	//Request leave command mode
 	radar_uart_->write((byte) 0x00);
 	send_command_postamble_();
+	
+	if (!wait) {
+		delay(50);
+		return true;
+	}
+
 	radar_uart_last_command_ = millis();
 	while(millis() - radar_uart_last_command_ < radar_uart_command_timeout_)
 	{
@@ -1075,7 +1087,7 @@ bool ld2410::leave_configuration_mode_()
 
 bool ld2410::requestStartEngineeringMode()
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1093,7 +1105,7 @@ bool ld2410::requestStartEngineeringMode()
 				if(latest_ack_ == 0x62 && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					is_Engineering_mode_ = true;
 					return true;
 				}
@@ -1101,13 +1113,13 @@ bool ld2410::requestStartEngineeringMode()
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 	return false;
 }
 
 bool ld2410::requestEndEngineeringMode()
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1125,7 +1137,7 @@ bool ld2410::requestEndEngineeringMode()
 				if(latest_ack_ == 0x63 && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					is_Engineering_mode_ = false;
 					return true;
 				}
@@ -1133,7 +1145,7 @@ bool ld2410::requestEndEngineeringMode()
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 	return false;
 }
 
@@ -1144,7 +1156,7 @@ bool ld2410::isEngineeringMode()
 
 bool ld2410::requestCurrentConfiguration()
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1162,20 +1174,20 @@ bool ld2410::requestCurrentConfiguration()
 				if(latest_ack_ == 0x61 && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					return true;
 				}
 			}
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 	return false;
 }
 
 bool ld2410::requestFirmwareVersion()
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1192,19 +1204,19 @@ bool ld2410::requestFirmwareVersion()
 			if(latest_ack_ == 0xA0 && latest_command_success_)
 			{
 				delay(50);
-				leave_configuration_mode_();
+				leave_configuration_mode_(false);
 				return true;
 			}
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 	return false;
 }
 
 bool ld2410::requestRestart()
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1222,20 +1234,20 @@ bool ld2410::requestRestart()
 				if(latest_ack_ == 0xA3 && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					return true;
 				}
 			}
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 	return false;
 }
 
 bool ld2410::requestFactoryReset()
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1253,20 +1265,20 @@ bool ld2410::requestFactoryReset()
 				if(latest_ack_ == 0xA2 && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					return true;
 				}
 			}
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 	return false;
 }
 
 bool ld2410::requestResolution()
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1284,20 +1296,20 @@ bool ld2410::requestResolution()
 				if(latest_ack_ == 0xAB && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					return true;
 				}
 			}
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 	return false;
 }
 
 bool ld2410::setResolution(uint8_t res)
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1317,21 +1329,21 @@ bool ld2410::setResolution(uint8_t res)
 				if(latest_ack_ == 0xAA && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					return true;
 				}
 			}
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 
 	return false;
 }
 
 bool ld2410::enableBluetooth()
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1350,21 +1362,21 @@ bool ld2410::enableBluetooth()
 				if(latest_ack_ == 0xA4 && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					return true;
 				}
 			}
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 
 	return false;
 }
 
 bool ld2410::disableBluetooth()
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1383,21 +1395,21 @@ bool ld2410::disableBluetooth()
 				if(latest_ack_ == 0xA4 && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					return true;
 				}
 			}
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 
 	return false;
 }
 
 bool ld2410::getMAC()
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1416,21 +1428,21 @@ bool ld2410::getMAC()
 				if(latest_ack_ == 0xA5 && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					return true;
 				}
 			}
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 
 	return false;
 }
 
 bool ld2410::setMaxValues(uint16_t moving, uint16_t stationary, uint16_t inactivityTimer)
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1465,20 +1477,20 @@ bool ld2410::setMaxValues(uint16_t moving, uint16_t stationary, uint16_t inactiv
 				if(latest_ack_ == 0x60 && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					return true;
 				}
 			}
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 	return false;
 }
 
 bool ld2410::setGateSensitivityThreshold(uint8_t gate, uint8_t moving, uint8_t stationary)
 {
-	if(enter_configuration_mode_())
+	if(enter_configuration_mode_(false))
 	{
 		delay(50);
 		send_command_preamble_();
@@ -1513,14 +1525,14 @@ bool ld2410::setGateSensitivityThreshold(uint8_t gate, uint8_t moving, uint8_t s
 				if(latest_ack_ == 0x64 && latest_command_success_)
 				{
 					delay(50);
-					leave_configuration_mode_();
+					leave_configuration_mode_(false);
 					return true;
 				}
 			}
 		}
 	}
 	delay(50);
-	leave_configuration_mode_();
+	leave_configuration_mode_(false);
 	return false;
 }
 #endif
